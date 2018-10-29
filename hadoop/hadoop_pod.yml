@@ -1,0 +1,11 @@
+spec:
+  containers:
+  - image: uhopper/hadoop-datanode:2.7.2
+    imagePullPolicy: IfNotPreset
+    name: datanode
+    env:
+    - name: CORE_CONF_fs_defaultFS
+      value: hdfs://namenode:8020
+    volumeMounts:
+    - name: hdfs-data
+      mountPath: /hadoop/dfs/data
