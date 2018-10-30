@@ -1,0 +1,3 @@
+[submodule "hbase-kubernetes"]
+	path = hbase-kubernetes
+	url = https://github.com/harryge00/hbase-kubernetes
