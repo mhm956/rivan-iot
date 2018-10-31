@@ -6,3 +6,6 @@ Get Started Guides:
 --> Article/Github Talking about persistence node:
 ----> https://cloud.google.com/kubernetes-engine/docs/quickstart
 ----> Note: A persistent volume is nice for a backup but not needed for this project
+
+--> Check this out if revisiting (it has example yamle files):
+https://bitbucket.org/uhopper/hadoop-docker/overview
