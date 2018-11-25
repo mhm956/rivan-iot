@@ -10,18 +10,22 @@ import subprocess
 import sys
 from time import sleep
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy_utils import database_exists, create_database
-
+from .db_functions import ErrorCodes, create_table
 import secrets
 from kafka import KafkaProducer
 
-engine = create_engine('sqlite:///rivan.db')
+engine = create_engine('sqlite:///rivan.db')  # Create the engine to the database
+Session = sessionmaker(bind=engine)  # Bind the session to the engine
 sim_net_list = []
 
 
 class RivanErrorSim:
     def __init__(self):
         """Run initial scripts"""
+        # Initialize the error code
+        self.error_code = 0
         # Create the Kafka producer.
         self.producer = KafkaProducer(bootstrap_servers=[secrets.KAFKA_SERVER_INTERNAL_IP])
 
@@ -40,26 +44,40 @@ class RivanErrorSim:
         self.producer.send('rivan-status-msg', 'Connecting a new {} device from {}'.
                            format(self.sim_arch, self.sim_net_addr).encode())
 
-        if not database_exists(engine.url):
-            create_database(engine.url)
-            print("Created database ------ {}".format(engine.url))
-
     def generate_error(self):
         """Using a database of known vulnerabilities, create a fake error for the specific arch"""
         error_description = subprocess.check_output(['searchsploit', self.sim_arch])
         range_max = len(error_description.decode().split('\n'))
         error_description = error_description.decode().split('\n')[random.randint(5, range_max - 10)].replace('  ', '')
+
+        self.error_code = random.randint(1, 10000)  # Generate a new random error code
+
         # Check that the returned line is a valid error code
         while any(substring in error_description for substring in ['Shellcode', '-------------']):
             error_description = subprocess.check_output(['searchsploit', self.sim_arch])
             range_max = len(error_description.decode().split('\n'))
             error_description = error_description.decode().split('\n')[random.randint(5, range_max - 10)]. \
                 replace('  ', '')
+
         return error_description
 
     def log_error(self, error_description):
         """Using the error description, create a database entry for that error"""
-        pass
+
+        if not database_exists(engine.url):
+            create_database(engine.url)
+            print("Created database ------ {}".format(engine.url))
+
+        if not engine.dialect.has_table(engine, 'error_codes'):
+            create_table(engine)
+            print("Created table --------- {}")
+
+        session = Session()
+        error_log = ErrorCodes(network_addr=self.sim_net_addr, error_code=self.error_code,
+                               description=error_description)
+        session.add(error_log)
+        session.commit()
+        # TODO: Need to collapse the entry into a json form
 
     def send_error_code(self, error_description):
         """Create, log, and send an error report to the Kafka broker"""
