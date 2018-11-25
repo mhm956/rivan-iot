@@ -1,7 +1,7 @@
 import datetime
 import json
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 
 Base = declarative_base()
 
@@ -10,6 +10,7 @@ class ErrorCodes(Base):
     __tablename__ = 'error_codes'
 
     id = Column(Integer, primary_key=True)
+    active_state = Column(Boolean, default=True)
     network_addr = Column(String)
     error_code = Column(Integer)
     description = Column(String)

@@ -11,8 +11,8 @@ import sys
 from time import sleep
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy_utils import database_exists, create_database
-from .db_functions import ErrorCodes, create_table
+from sqlalchemy_utils import database_exists, create_database, functions
+from .db_functions import ErrorCodes, create_table, serialize_row
 import secrets
 from kafka import KafkaProducer
 
@@ -77,7 +77,7 @@ class RivanErrorSim:
                                description=error_description)
         session.add(error_log)
         session.commit()
-        # TODO: Need to collapse the entry into a json form
+        return serialize_row(error_log)
 
     def send_error_code(self, error_description):
         """Create, log, and send an error report to the Kafka broker"""
@@ -85,7 +85,7 @@ class RivanErrorSim:
         self.producer.send('rivan-error-msg', error_description.encode())
 
 
-if __name__ == 'main':
+if __name__ == '__main__':
     # Check that the CLI was started with the needed argument
     if len(sys.argv) != 2:
         print("Incorrect number of arguments passed.")
@@ -109,8 +109,8 @@ if __name__ == 'main':
                 sleep(random.randint(30, 120))  # Sleep between 30 - 120 seconds
                 active_worker = worker_dict["rivan_producer_{}".format(worker)]
                 error = active_worker.generate_error()
-                active_worker.log_error(error)
-                active_worker.send_error_code(error)
+                error_json = active_worker.log_error(error)
+                active_worker.send_error_code(error_json)
 
     except KeyboardInterrupt:
         print("Exiting the simulation...")
@@ -118,4 +118,4 @@ if __name__ == 'main':
             worker_dict["rivan_producer_{}".format(worker)]. \
                 producer.send('rivan-status-msg', 'Disconnecting device at {}'.format(
                     worker_dict["rivan_producer_{}".format(worker)].sim_net_addr).encode())
-        # TODO: Need to destroy database on exit for cleaning up
+        functions.drop_database(engine.url)

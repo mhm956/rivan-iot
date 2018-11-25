@@ -3,7 +3,10 @@ On the GCE console:
 * Selected the Ubuntu 18.04 image and created instance with 2 vCPUs
 * SSH'd into the console from local host
 * Installed Docker
-* pip install sqlalchemy kafka
+* pip install sqlalchemy kafka # TODO: Add pip freeze
+* Installed exploitdb https://github.com/offensive-security/exploitdb
+* Cloned repo to the home directory
+
 
 Set up of the Kafka VM
 * Setup using a marketplace solution from GCE Deployment Marketplace
