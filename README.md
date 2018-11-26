@@ -27,4 +27,4 @@ The RIVAN network is built on the "Google Cloud" platform and utilizes the follo
     * **Note: Deployed using a [Juju charm](https://jujucharms.com/apache-spark/13)**
     
 ### Network Configuration
-
+![Network Diagram](./docs/rivan_diagram.png)
