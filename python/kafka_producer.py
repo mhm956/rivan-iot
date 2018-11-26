@@ -1,4 +1,5 @@
 """
+This script is executed on the VM #1: Traffic Generator Instance
 On a random but consistent basis generate error code warnings. These warnings will:
     1. Be saved on a local database to simulate persistence of a warning.
     2. Be sent to the Kafka broker (remote-hosted) for further analysis.

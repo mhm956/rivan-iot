@@ -1,3 +1,7 @@
+"""
+This script is executed on the VM #1: Traffic Generator Instance
+When a fix-msg is received in the Kafka broker, mark the associated database entry as resolved.
+"""
 import os
 
 from kafka import KafkaConsumer

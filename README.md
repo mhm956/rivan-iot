@@ -22,9 +22,37 @@ The RIVAN network is built on the "Google Cloud" platform and utilizes the follo
     * Pyspark ([Python Plugin](https://pypi.org/project/pyspark/))
     * **Note: Deployed using a [Juju charm](https://jujucharms.com/apache-spark/13)**
 
-4. Spark Slave (VM #4 --- )
+4. Spark Slave (VM #4 --- OS: Ubuntu 18.04 LTS)
     * Spark ([Apache Site Page](https://spark.apache.org/))
     * **Note: Deployed using a [Juju charm](https://jujucharms.com/apache-spark/13)**
     
 ### Network Configuration
 ![Network Diagram](./docs/rivan_diagram.png)
+
+### Setting Up Local Environment
+You will need to set up gcloud on your local environment. Follow the steps listed [here](https://cloud.google.com/sdk/install) to get started.
+After setting up the gcloud CLI tool and your remote deployments, you will be able to ssh into your VM using:
+```bash
+gcloud compute --project "<your-project-name" ssh --zone "<your zone(e.g. us-central1-a)" "<VM Instance Name>"
+```
+
+## Setting Up the VM Instances
+#### Setting up the Traffic Generator
+TODO - Finish this session
+
+On the GCE console:
+* Selected the Ubuntu 18.04 image and created instance with 2 vCPUs
+* SSH'd into the console from local host
+* Installed Docker
+* pip install sqlalchemy kafka # TODO: Add pip freeze
+* Installed exploitdb https://github.com/offensive-security/exploitdb
+* Cloned repo to the home directory
+* Ran locally # TODO: Make this a service that starts on boot.
+#### Setting up the Kafka Broker
+In your web browser, go to your google cloud dashboard page. Select "Deployment Manager" from the left hand menu.
+Select "Deploy Marketplace Solution" and search for "Kafka". Follow the steps to finish the setup.
+#### Setting up the Spark Master/Slave Instances
+TODO - Finish this session
+
+Set up of the Spark Client VM
+* Using a Juju deployment in standalone mode
