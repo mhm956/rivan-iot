@@ -1,7 +1,7 @@
 """
 On a random but consistent basis generate error code warnings. These warnings will:
     1. Be saved on a local database to simulate persistence of a warning.
-    2. Be sent to the Kafaka broker (remote-hosted) for further analysis.
+    2. Be sent to the Kafka broker (remote-hosted) for further analysis.
 """
 import os
 import random
@@ -107,8 +107,11 @@ class RivanErrorSim:
         session = Session()
         error_log = ErrorCodes(network_addr=self.sim_net_addr, error_code=self.error_code,
                                description=error_description)
+        print("1: ", error_log)
         session.add(error_log)
+        print("2: ", error_log)
         session.commit()
+        print("3: ", error_log)
         return serialize_row(error_log)
 
     def send_error_code(self, error_description):
@@ -140,17 +143,18 @@ if __name__ == '__main__':
 
     try:
         while 1:
-            sleep(random.randint(5, 30))  # Sleep between 30 - 120 seconds TODO: Up the sleep count
             for worker in range(0, int(sys.argv[1])):
                 active_worker = worker_dict["rivan_producer_{}".format(worker)]
                 print("Generating new error code for worker on {}".format(active_worker.sim_net_addr))
                 error = active_worker.generate_error()
                 print("Adding error code for worker on {}".format(active_worker.sim_net_addr))
                 error_json = active_worker.log_error(error)
-                print("Sending error code to Kafka for worker on {} --> Error Code: {}".format(active_worker.sim_net_addr,
-                                                                                      active_worker.error_code))
+                print("Sending error code to Kafka for worker on {} --> Error Code: {}".
+                      format(active_worker.sim_net_addr, active_worker.error_code))
                 active_worker.send_error_code(error_json)
-                print("Returning to sleep timer")
+                sleep(random.randint(5, 10))  # Sleep between 30 - 120 seconds
+            print("Returning to sleep timer")
+            sleep(random.randint(5, 30))  # Sleep between 30 - 120 seconds TODO: Up the sleep count
 
     except KeyboardInterrupt:
         print("\n\nExiting the simulation...")
@@ -158,4 +162,3 @@ if __name__ == '__main__':
             worker_dict["rivan_producer_{}".format(worker)]. \
                 producer.send('rivan-status-msg', 'Disconnecting device at {}'.format(
                     worker_dict["rivan_producer_{}".format(worker)].sim_net_addr).encode())
-        functions.drop_database(engine.url)

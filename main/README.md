@@ -6,6 +6,7 @@ On the GCE console:
 * pip install sqlalchemy kafka # TODO: Add pip freeze
 * Installed exploitdb https://github.com/offensive-security/exploitdb
 * Cloned repo to the home directory
+* Ran locally # TODO: Make this a service that starts on boot.
 
 
 Set up of the Kafka VM
