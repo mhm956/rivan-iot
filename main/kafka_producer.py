@@ -3,22 +3,54 @@ On a random but consistent basis generate error code warnings. These warnings wi
     1. Be saved on a local database to simulate persistence of a warning.
     2. Be sent to the Kafaka broker (remote-hosted) for further analysis.
 """
+import os
 import random
 import socket
 import struct
 import subprocess
 import sys
+import datetime
+import json
 from time import sleep
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_utils import database_exists, create_database, functions
-from .db_functions import ErrorCodes, create_table, serialize_row
-import secrets
 from kafka import KafkaProducer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 
-engine = create_engine('sqlite:///rivan.db')  # Create the engine to the database
-Session = sessionmaker(bind=engine)  # Bind the session to the engine
 sim_net_list = []
+engine = create_engine('sqlite:///rivan.db')  # Create the engine to the database
+Base = declarative_base()
+Session = sessionmaker(bind=engine)  # Bind the session to the engine
+
+
+class ErrorCodes(Base):
+    __tablename__ = 'error_codes'
+
+    id = Column(Integer, primary_key=True)
+    active_state = Column(Boolean, default=True)
+    network_addr = Column(String)
+    error_code = Column(Integer)
+    description = Column(String)
+    created_dts = Column(DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return "<ErrorCodes(network_addr='%s', error_code='%d', description='%s')>" % \
+               (self.network_addr, self.error_code, self.description)
+
+
+def create_table(db_engine):
+    """Helper function ot create the table"""
+    Base.metadata.create_all(bind=db_engine)
+
+
+def serialize_row(row_object):
+    """Turn a row from ErrorCodes into a JSON string"""
+    temp_log = row_object.__dict__
+    temp_log.pop('_sa_instance_state', None)
+    temp_log['created_dts'] = str(temp_log['created_dts'])
+    return json.dumps(temp_log)
 
 
 class RivanErrorSim:
@@ -27,7 +59,7 @@ class RivanErrorSim:
         # Initialize the error code
         self.error_code = 0
         # Create the Kafka producer.
-        self.producer = KafkaProducer(bootstrap_servers=[secrets.KAFKA_SERVER_INTERNAL_IP])
+        self.producer = KafkaProducer(bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
 
         # Generate a random IP address for the device. If the IP address is duplicated already in database or
         # the IP address is reserved then regenerate the simulated IP address.
@@ -70,7 +102,7 @@ class RivanErrorSim:
 
         if not engine.dialect.has_table(engine, 'error_codes'):
             create_table(engine)
-            print("Created table --------- {}")
+            print("Created table --------- {}".format('error_codes'))
 
         session = Session()
         error_log = ErrorCodes(network_addr=self.sim_net_addr, error_code=self.error_code,
@@ -89,32 +121,40 @@ if __name__ == '__main__':
     # Check that the CLI was started with the needed argument
     if len(sys.argv) != 2:
         print("Incorrect number of arguments passed.")
-        print("Usage: {} <number of runners> ")
+        print("Usage: {} <number of runners> ".format(sys.argv[0]))
         exit(0)
 
     # Check that a valid number of workers was requested by the CLI argument
-    if sys.argv[1] not in range(1, 10):
+    if int(sys.argv[1]) not in range(1, 10):
         print("Please enter a number of workers between 1 and 10")
         exit(0)
 
-    print("Running {} with {} number of traffic generators...".format(sys.argv[0], sys.argv[1]))
+    print("Running {} with {} traffic generators...".format(sys.argv[0], sys.argv[1]))
 
     worker_dict = dict()
-    for worker in range(1, sys.argv[1]):
+    for worker in range(0, int(sys.argv[1])):
         worker_dict["rivan_producer_{}".format(worker)] = RivanErrorSim()
+        print("Initialized worker with following constrains:\n- Network Address: {}\n- Arch: {}"
+              .format(worker_dict["rivan_producer_{}".format(worker)].sim_net_addr,
+                      worker_dict["rivan_producer_{}".format(worker)].sim_arch))
 
     try:
         while 1:
-            for worker in range(1, sys.argv[1]):
-                sleep(random.randint(30, 120))  # Sleep between 30 - 120 seconds
+            sleep(random.randint(5, 30))  # Sleep between 30 - 120 seconds TODO: Up the sleep count
+            for worker in range(0, int(sys.argv[1])):
                 active_worker = worker_dict["rivan_producer_{}".format(worker)]
+                print("Generating new error code for worker on {}".format(active_worker.sim_net_addr))
                 error = active_worker.generate_error()
+                print("Adding error code for worker on {}".format(active_worker.sim_net_addr))
                 error_json = active_worker.log_error(error)
+                print("Sending error code to Kafka for worker on {} --> Error Code: {}".format(active_worker.sim_net_addr,
+                                                                                      active_worker.error_code))
                 active_worker.send_error_code(error_json)
+                print("Returning to sleep timer")
 
     except KeyboardInterrupt:
-        print("Exiting the simulation...")
-        for worker in range(1, sys.argv[1]):
+        print("\n\nExiting the simulation...")
+        for worker in range(0, int(sys.argv[1])):
             worker_dict["rivan_producer_{}".format(worker)]. \
                 producer.send('rivan-status-msg', 'Disconnecting device at {}'.format(
                     worker_dict["rivan_producer_{}".format(worker)].sim_net_addr).encode())
