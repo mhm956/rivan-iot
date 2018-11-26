@@ -12,12 +12,12 @@ import sys
 import datetime
 import json
 from time import sleep
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy_utils import database_exists, create_database, functions
+
 from kafka import KafkaProducer
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
 
 sim_net_list = []
 engine = create_engine('sqlite:///rivan.db')  # Create the engine to the database
