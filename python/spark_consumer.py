@@ -1,3 +1,6 @@
+"""
+This script is executed on the VM #3: Spark Master/Slave Instance
+"""
 import json
 import logging
 import os
