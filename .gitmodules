@@ -1,6 +1,0 @@
-[submodule "juju-spark-hadoop"]
-	path = juju-spark-hadoop
-	url = https://github.com/juju-solutions/bundle-apache-hadoop-spark-zeppelin.git
-[submodule "iotfinalproject"]
-	path = jay-kafka-implementation
-	url = https://github.com/roadrunner2014/iotfinalproject

@@ -8,7 +8,7 @@ tar -xvzf google-cloud-sdk-222.0.0-linux-x86_64.tar.gz
 rm google-cloud-sdk-222.0.0-linux-x86_64.tar.gz
 
 # Install the SDK
-install.sh
+google-cloud-sdk/install.sh
 
 # Clean up the directory
 rm -rf google-cloud-sdk-222.0.0-linux-x86_64

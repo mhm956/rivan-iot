@@ -3,6 +3,8 @@ secret.py
 
 # Google Cloud Keys
 TeamOrangeProject-72f555abd04f.json
+TeamOrangeProject-a4280cd28945.json
+teamorangeproject-220020-sa.json
 
 # Google Cloud Source Code
 google-cloud-sdk
@@ -10,5 +12,4 @@ credentials.csv
 
 # Unversioned Files
 .idea/
-teamorangeproject-220020-sa.json
 venv/
