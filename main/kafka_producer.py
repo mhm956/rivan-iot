@@ -111,6 +111,7 @@ class RivanErrorSim:
         session.add(error_log)
         print("2: ", error_log)
         session.commit()
+        # TODO: Close the session
         print("3: ", error_log)
         return serialize_row(error_log)
 

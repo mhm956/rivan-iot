@@ -1,32 +1,27 @@
-import json
-import logging
 import os
-import pathlib
-from logging.handlers import TimedRotatingFileHandler
-from pprint import pprint
 
 from kafka import KafkaConsumer
+from sqlalchemy import create_engine
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+
+Base = automap_base()
+engine = create_engine('sqlite:///rivan.db')  # Create the engine to the database
+Base.prepare(engine, reflect=True)
+ErrorCodes = Base.classes.error_codes
+session = Session(engine)
 
 
-def consume_kafka_spark():
-    logger = logging.getLogger("Rotating Log")
-    logger.setLevel(logging.INFO)
-    file_path = "/home/taylor/logs/"
-    pathlib.Path(file_path).mkdir(parents=True, exist_ok=True)
-
-    # Rotate the log every 60 minutes
-    handler = TimedRotatingFileHandler(file_path + "kafka-spark-log", when="m", interval=60)
-    logger.addHandler(handler)
-
-    consumer = KafkaConsumer('rivan-error-msg', bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
+def consume_kafka():
+    """When a fix message is received, update the database"""
+    consumer = KafkaConsumer('rivan-fix-msg', bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
     for message in consumer:
-        # TODO: Remove the color codes
-        json_value = json.loads(message.value.decode())
-        pprint(json_value, indent=4)
-        logger.info("Level: Info --- DTS: %s --- Device Address: %s --- Error Code: %s --- Error Description: %s" %
-                    (json_value.get('created_dts'), json_value.get('network_addr'), json_value.get('error_code'),
-                     json_value.get('description')))
+        print("Updating column {}".format(message.value.decode()))
+        # session.query(ErrorCodes.id, ErrorCodes.active_state). \
+        #     filter(ErrorCodes.id == int(message.value.decode())). \
+        #     update({"active_state": False})
+        # TODO: Figure out how to deal with the locking sqlite database
 
 
 if __name__ == '__main__':
-    consume_kafka_spark()
+    consume_kafka()
