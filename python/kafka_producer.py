@@ -21,7 +21,7 @@ from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.ext.declarative import declarative_base
 
 sim_net_list = []
-engine = create_engine('sqlite:///rivan.db')  # Create the engine to the database
+engine = create_engine('mysql+mysqldb://demouser:demopassword@127.0.0.1:3306/rivandb')  # Create the engine to the database
 Base = declarative_base()
 Session = sessionmaker(bind=engine)  # Bind the session to the engine
 
@@ -31,9 +31,9 @@ class ErrorCodes(Base):
 
     id = Column(Integer, primary_key=True)
     active_state = Column(Boolean, default=True)
-    network_addr = Column(String)
+    network_addr = Column(String(32))
     error_code = Column(Integer)
-    description = Column(String)
+    description = Column(String(254))
     created_dts = Column(DateTime, default=datetime.datetime.utcnow)
 
     def __repr__(self):
@@ -130,7 +130,7 @@ if __name__ == '__main__':
         exit(0)
 
     # Check that a valid number of workers was requested by the CLI argument
-    if int(sys.argv[1]) not in range(1, 10):
+    if int(sys.argv[1]) not in range(1, 11):
         print("Please enter a number of workers between 1 and 10")
         exit(0)
 

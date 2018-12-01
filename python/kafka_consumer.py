@@ -9,11 +9,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 
+import kafka_producer
+
 Base = automap_base()
-engine = create_engine('sqlite:///rivan.db')  # Create the engine to the database
+# Create the engine to the database
+engine = create_engine('mysql+mysqldb://demouser:demopassword@127.0.0.1:3306/rivandb')
 Base.prepare(engine, reflect=True)
-ErrorCodes = Base.classes.error_codes
+ErrorCodes = kafka_producer.ErrorCodes
+print(ErrorCodes)
 session = Session(engine)
+session.bind_table(table=ErrorCodes, bind=engine)
+print(session)
 
 
 def consume_kafka():
@@ -21,11 +27,15 @@ def consume_kafka():
     consumer = KafkaConsumer('rivan-fix-msg', bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
     for message in consumer:
         print("Updating column {}".format(message.value.decode()))
-        # session.query(ErrorCodes.id, ErrorCodes.active_state). \
-        #     filter(ErrorCodes.id == int(message.value.decode())). \
-        #     update({"active_state": False})
-        # TODO: Figure out how to deal with the locking sqlite database
+        session.query(ErrorCodes.id, ErrorCodes.active_state). \
+            filter(ErrorCodes.id == int(message.value.decode())). \
+            update({"active_state": False})
+        session.commit()
 
 
 if __name__ == '__main__':
-    consume_kafka()
+    try:
+        consume_kafka()
+    except KeyboardInterrupt:
+        print("\nExiting simulation script...")
+        exit(0)

@@ -24,7 +24,6 @@ def consume_kafka_spark():
     consumer = KafkaConsumer('rivan-error-msg', bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
     producer = KafkaProducer(bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
     for message in consumer:
-        # TODO: Remove the color codes
         json_value = json.loads(message.value.decode())
         pprint(json_value, indent=4)
         logger.info("Level: Info --- DTS: %s --- Device Address: %s --- Error Code: %s --- Error Description: %s" %
@@ -34,4 +33,8 @@ def consume_kafka_spark():
 
 
 if __name__ == '__main__':
-    consume_kafka_spark()
+    try:
+        consume_kafka_spark()
+    except KeyboardInterrupt:
+        print("\nExiting simulation script...")
+        exit(0)
