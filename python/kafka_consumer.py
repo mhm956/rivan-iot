@@ -16,10 +16,8 @@ Base = automap_base()
 engine = create_engine('mysql+mysqldb://demouser:demopassword@127.0.0.1:3306/rivandb')
 Base.prepare(engine, reflect=True)
 ErrorCodes = kafka_producer.ErrorCodes
-print(ErrorCodes)
 session = Session(engine)
 session.bind_table(table=ErrorCodes, bind=engine)
-print(session)
 
 
 def consume_kafka():
@@ -38,4 +36,5 @@ if __name__ == '__main__':
         consume_kafka()
     except KeyboardInterrupt:
         print("\nExiting simulation script...")
+        session.close()
         exit(0)

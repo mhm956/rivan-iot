@@ -24,6 +24,8 @@ sim_net_list = []
 engine = create_engine('mysql+mysqldb://demouser:demopassword@127.0.0.1:3306/rivandb')  # Create the engine to the database
 Base = declarative_base()
 Session = sessionmaker(bind=engine)  # Bind the session to the engine
+session = Session()
+producer = KafkaProducer(bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
 
 
 class ErrorCodes(Base):
@@ -39,6 +41,11 @@ class ErrorCodes(Base):
     def __repr__(self):
         return "<ErrorCodes(network_addr='%s', error_code='%d', description='%s')>" % \
                (self.network_addr, self.error_code, self.description)
+
+    def as_dict(self):
+        error_dict = {c.name: getattr(self, c.name) for c in self.__table__.columns}
+        error_dict.pop('created_dts')
+        return error_dict
 
 
 def create_table(db_engine):
@@ -59,8 +66,6 @@ class RivanErrorSim:
         """Run initial scripts"""
         # Initialize the error code
         self.error_code = 0
-        # Create the Kafka producer.
-        self.producer = KafkaProducer(bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
 
         # Generate a random IP address for the device. If the IP address is duplicated already in database or
         # the IP address is reserved then regenerate the simulated IP address.
@@ -72,26 +77,24 @@ class RivanErrorSim:
 
         # Select a random architecture
         self.sim_arch = ['Android', 'ARM', 'BSD', 'Linux', 'macOS', 'OSX', 'Windows'][random.randint(0, 6)]
-
-        # Publish that a new simulated network is now active.
-        self.producer.send('rivan-status-msg', 'Connecting a new {} device from {}'.
-                           format(self.sim_arch, self.sim_net_addr).encode())
+        self.error_percentage = random.randint(1, 30)
 
     def generate_error(self):
         """Using a database of known vulnerabilities, create a fake error for the specific arch"""
-        error_description = subprocess.check_output(['searchsploit', self.sim_arch])
-        range_max = len(error_description.decode().split('\n'))
-        error_description = error_description.decode().split('\n')[random.randint(5, range_max - 10)].replace('  ', '')
-
-        self.error_code = random.randint(1, 10000)  # Generate a new random error code
-
-        # Check that the returned line is a valid error code
-        while any(substring in error_description for substring in ['Shellcode', '-------------']):
+        error_description = None
+        if self.error_percentage > random.randint(1, 99):  # If the percentage-based error is greater than the threshold
             error_description = subprocess.check_output(['searchsploit', self.sim_arch])
             range_max = len(error_description.decode().split('\n'))
-            error_description = error_description.decode().split('\n')[random.randint(5, range_max - 10)]. \
-                replace('  ', '')
+            error_description = error_description.decode().split('\n')[random.randint(5, range_max - 10)].replace('  ', '')
 
+            self.error_code = random.randint(1, 10000)  # Generate a new random error code
+
+            # Check that the returned line is a valid error code
+            while any(substring in error_description for substring in ['Shellcode', '-------------']):
+                error_description = subprocess.check_output(['searchsploit', self.sim_arch])
+                range_max = len(error_description.decode().split('\n'))
+                error_description = error_description.decode().split('\n')[random.randint(5, range_max - 10)]. \
+                    replace('  ', '')
         return error_description
 
     def log_error(self, error_description):
@@ -105,21 +108,23 @@ class RivanErrorSim:
             create_table(engine)
             print("Created table --------- {}".format('error_codes'))
 
-        session = Session()
         error_log = ErrorCodes(network_addr=self.sim_net_addr, error_code=self.error_code,
                                description=error_description)
-        print("1: ", error_log)
         session.add(error_log)
-        print("2: ", error_log)
         session.commit()
-        # TODO: Close the session
-        print("3: ", error_log)
-        return serialize_row(error_log)
 
-    def send_error_code(self, error_description):
-        """Create, log, and send an error report to the Kafka broker"""
-        # Send the error code message to the Kafka topic. The default topic is 'rivan-error-msg'
-        self.producer.send('rivan-error-msg', error_description.encode())
+
+def send_error_code():
+    """Create, log, and send an error report to the Kafka broker"""
+    # Send the error code message to the Kafka topic. The default topic is 'rivan-error-msg'
+    session.bind_table(table=ErrorCodes, bind=engine)
+    query = session.query(ErrorCodes). \
+        filter(ErrorCodes.active_state == True)
+    for entry in query:
+        print("Sending entry #{}: with:\nAddress:\t{}\nError Code:\t{}\nDescription:\t{}\n"
+              .format(entry.id, entry.network_addr, entry.error_code, entry.description))
+        entry_json = json.dumps(entry.as_dict())
+        producer.send('rivan-error-msg', entry_json.encode())
 
 
 if __name__ == '__main__':
@@ -147,20 +152,18 @@ if __name__ == '__main__':
         while 1:
             for worker in range(0, int(sys.argv[1])):
                 active_worker = worker_dict["rivan_producer_{}".format(worker)]
-                print("Generating new error code for worker on {}".format(active_worker.sim_net_addr))
+                print("Checking for a new error code for worker on {} (Arch: {} | Error Probability: {}%)"
+                      .format(active_worker.sim_net_addr, active_worker.sim_arch, active_worker.error_percentage))
                 error = active_worker.generate_error()
+                if not error:
+                    continue  # If there was no error generated then go on to the next worker
                 print("Adding error code for worker on {}".format(active_worker.sim_net_addr))
-                error_json = active_worker.log_error(error)
-                print("Sending error code to Kafka for worker on {} --> Error Code: {}".
-                      format(active_worker.sim_net_addr, active_worker.error_code))
-                active_worker.send_error_code(error_json)
-                sleep(random.randint(5, 10))  # Sleep between 30 - 120 seconds
-            print("Returning to sleep timer")
-            sleep(random.randint(5, 30))  # Sleep between 30 - 120 seconds TODO: Up the sleep count
+                active_worker.log_error(error)
+            print("Sending error codes to the Kafka server\n")
+            send_error_code()
+            print("Returning to sleep timer\n")
+            sleep(random.randint(5, 30))  # Sleep between 5-30 seconds
 
     except KeyboardInterrupt:
         print("\n\nExiting the simulation...")
-        for worker in range(0, int(sys.argv[1])):
-            worker_dict["rivan_producer_{}".format(worker)]. \
-                producer.send('rivan-status-msg', 'Disconnecting device at {}'.format(
-                    worker_dict["rivan_producer_{}".format(worker)].sim_net_addr).encode())
+        exit(0)

@@ -24,4 +24,5 @@ echo "Exiting setup script for mysql"
 sudo apt-get install python3-dev default-libmysqlclient-dev
 pip3 install mysqlclient
 
-In [2]: engine = sa.create_engine('mysql+mysqldb://demouser:demopassword@127.0.0.1:3306')
+#In [2]: engine = sa.create_engine('mysql+mysqldb://demouser:demopassword@127.0.0.1:3306')
+#screen -d -m python3 /home/taylor/rivan-iot/python/kafka_producer.py 10 -S trafficgen_producer
