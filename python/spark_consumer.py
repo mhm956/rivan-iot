@@ -18,7 +18,7 @@ def consume_kafka_spark():
     pathlib.Path(file_path).mkdir(parents=True, exist_ok=True)
 
     # Rotate the log every 60 minutes
-    handler = TimedRotatingFileHandler(file_path + "kafka-spark-log", when="m", interval=60)
+    handler = TimedRotatingFileHandler(file_path + "kafka-spark-log", when="m", interval=5)
     logger.addHandler(handler)
 
     consumer = KafkaConsumer('rivan-error-msg', bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
@@ -26,8 +26,9 @@ def consume_kafka_spark():
     for message in consumer:
         json_value = json.loads(message.value.decode())
         pprint(json_value, indent=4)
-        logger.info("Level: Info --- DTS: %s --- Device Address: %s --- Error Code: %s --- Error Description: %s" %
-                    (json_value.get('created_dts'), json_value.get('network_addr'), json_value.get('error_code'),
+        logger.info("Level: Info --- DTS: %s --- Device Arch: %s --- Device Address: %s --- Error Code: %s --- Error "
+                    "Description: %s" %
+                    (json_value.get('created_dts'), json_value.get('sim_arch'), json_value.get('network_addr'), json_value.get('error_code'),
                      json_value.get('description')))
         producer.send('rivan-fix-msg', str(json_value.get("id")).encode())
 

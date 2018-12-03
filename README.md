@@ -24,7 +24,7 @@ The RIVAN network is built on the "Google Cloud" platform and utilizes the follo
 
 4. Spark Slave (VM #4 --- OS: Ubuntu 18.04 LTS)
     * Spark ([Apache Site Page](https://spark.apache.org/))
-    * **Note: Deployed using a [Juju charm](https://jujucharms.com/apache-spark/13)**
+    * **Note: Deployed using a [Juju charm](https://jujucharms.com/spark/74)**
     
 ### Network Configuration
 ![Network Diagram](./docs/rivan_diagram.png)

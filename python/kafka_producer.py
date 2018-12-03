@@ -27,6 +27,10 @@ Session = sessionmaker(bind=engine)  # Bind the session to the engine
 session = Session()
 producer = KafkaProducer(bootstrap_servers=[os.environ.get('KAFKA_SERVER_INTERNAL_IP')])
 
+if not database_exists(engine.url):
+    create_database(engine.url)
+    print("Created database ------ {}".format(engine.url))
+
 
 class ErrorCodes(Base):
     __tablename__ = 'error_codes'
@@ -37,6 +41,7 @@ class ErrorCodes(Base):
     error_code = Column(Integer)
     description = Column(String(254))
     created_dts = Column(DateTime, default=datetime.datetime.utcnow)
+    sim_arch = Column(String(32))
 
     def __repr__(self):
         return "<ErrorCodes(network_addr='%s', error_code='%d', description='%s')>" % \
@@ -44,13 +49,19 @@ class ErrorCodes(Base):
 
     def as_dict(self):
         error_dict = {c.name: getattr(self, c.name) for c in self.__table__.columns}
-        error_dict.pop('created_dts')
+        # error_dict.pop('created_dts')
+        error_dict['created_dts'] = str(error_dict['created_dts'])
         return error_dict
 
 
 def create_table(db_engine):
     """Helper function ot create the table"""
     Base.metadata.create_all(bind=db_engine)
+
+
+if not engine.dialect.has_table(engine, 'error_codes'):
+    create_table(engine)
+    print("Created table --------- {}".format('error_codes'))
 
 
 def serialize_row(row_object):
@@ -100,16 +111,8 @@ class RivanErrorSim:
     def log_error(self, error_description):
         """Using the error description, create a database entry for that error"""
 
-        if not database_exists(engine.url):
-            create_database(engine.url)
-            print("Created database ------ {}".format(engine.url))
-
-        if not engine.dialect.has_table(engine, 'error_codes'):
-            create_table(engine)
-            print("Created table --------- {}".format('error_codes'))
-
         error_log = ErrorCodes(network_addr=self.sim_net_addr, error_code=self.error_code,
-                               description=error_description)
+                               description=error_description, sim_arch=self.sim_arch)
         session.add(error_log)
         session.commit()
 
@@ -121,9 +124,9 @@ def send_error_code():
     query = session.query(ErrorCodes). \
         filter(ErrorCodes.active_state == True)
     for entry in query:
-        print("Sending entry #{}: with:\nAddress:\t{}\nError Code:\t{}\nDescription:\t{}\n"
-              .format(entry.id, entry.network_addr, entry.error_code, entry.description))
-        entry_json = json.dumps(entry.as_dict())
+        print("Sending entry #{}: with:\nAddress:\t{}\nArch:\t{}\nError Code:\t{}\nDescription:\t{}\n"
+              .format(entry.id, entry.network_addr, entry.sim_arch, entry.error_code, entry.description))
+        entry_json = json.dumps(entry.as_dict())  # Turn db object's dictionary into json string
         producer.send('rivan-error-msg', entry_json.encode())
 
 
