@@ -56,3 +56,9 @@ TODO - Finish this session
 
 Set up of the Spark Client VM
 * Using a Juju deployment in standalone mode
+
+# To run in paralleled standalone mode
+# conf = SparkConf()
+# conf.setMaster('spark://10.128.0.4:7077')
+# conf.setAppName('spark-batch')
+# sc = SparkContext(conf=conf)
