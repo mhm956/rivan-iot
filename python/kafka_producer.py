@@ -138,8 +138,8 @@ if __name__ == '__main__':
         exit(0)
 
     # Check that a valid number of workers was requested by the CLI argument
-    if int(sys.argv[1]) not in range(1, 11):
-        print("Please enter a number of workers between 1 and 10")
+    if int(sys.argv[1]) not in range(1, 41):
+        print("Please enter a number of workers between 1 and 40")
         exit(0)
 
     print("Running {} with {} traffic generators...".format(sys.argv[0], sys.argv[1]))
